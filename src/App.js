@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { abi, contractAddress } from "./constant";
-
-function App() {
+const App = () => {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
   const [address, setAddress] = useState("");
   const [network, setNetwork] = useState("");
   const [contract, setContract] = useState();
+
   const [greeting, setGreeting] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [newGreeting, setNewGreeting] = useState("");
@@ -60,7 +60,9 @@ function App() {
     if (!contract) return;
     setLoading(true);
     try {
-      let res = await contract.setGreeting(newGreeting);
+      let res = await contract.setGreeting(newGreeting, {
+        value: ethers.utils.parseEther("0.1"),
+      });
       res.wait();
       if (res) {
         console.log(res);
@@ -71,8 +73,7 @@ function App() {
       console.log(error);
     }
   }
-
-  useEffect(() => {
+  const eventListener = () => {
     if (contract) {
       contract.on(
         "GreetingChange",
@@ -82,7 +83,10 @@ function App() {
         }
       );
     }
-  }, [contract]);
+  };
+
+  useEffect(eventListener, [contract]);
+
   return (
     <div>
       <h1>Ethers.js and React Integration</h1>
@@ -90,8 +94,6 @@ function App() {
       <p>Connected account: {address}</p>
       {greeting}
       <p> {isPremium ? "premium" : "Not premium"}</p>
-      {/* Your application code goes here */}
-
       <div>
         <input
           value={newGreeting}
@@ -103,6 +105,6 @@ function App() {
       </div>
     </div>
   );
-}
+};
 
 export default App;
