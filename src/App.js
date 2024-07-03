@@ -1,8 +1,108 @@
-import logo from "./logo.svg";
-import "./App.css";
+import React, { useEffect, useState } from "react";
+import { ethers } from "ethers";
+import { abi, contractAddress } from "./constant";
 
 function App() {
-  return <div></div>;
+  const [provider, setProvider] = useState(null);
+  const [signer, setSigner] = useState(null);
+  const [address, setAddress] = useState("");
+  const [network, setNetwork] = useState("");
+  const [contract, setContract] = useState();
+  const [greeting, setGreeting] = useState("");
+  const [isPremium, setIsPremium] = useState(false);
+  const [newGreeting, setNewGreeting] = useState("");
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const initializeProvider = async () => {
+      if (window.ethereum) {
+        //opens metamask for connection
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        const contract = new ethers.Contract(contractAddress, abi, signer);
+        setAddress(address);
+        setSigner(signer);
+        setProvider(provider);
+        setContract(contract);
+      }
+    };
+
+    initializeProvider();
+  }, []);
+
+  useEffect(() => {
+    const getNetwork = async () => {
+      if (provider) {
+        const network = await provider.getNetwork();
+        setNetwork(network.name);
+      }
+    };
+
+    getNetwork();
+  }, [provider]);
+
+  useEffect(() => {
+    async function readContract() {
+      try {
+        setGreeting(await contract.greeting());
+        setIsPremium(await contract.premium());
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    if (contract) {
+      readContract();
+    }
+  }, [contract, loading]);
+
+  async function handleNewGreeting() {
+    if (!contract) return;
+    setLoading(true);
+    try {
+      let res = await contract.setGreeting(newGreeting);
+      res.wait();
+      if (res) {
+        console.log(res);
+      }
+
+      setNewGreeting("");
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  useEffect(() => {
+    if (contract) {
+      contract.on(
+        "GreetingChange",
+        (greetingSetter, newGreeting, premium, value, event) => {
+          console.log(greetingSetter, newGreeting, premium, value, event);
+          setLoading(false);
+        }
+      );
+    }
+  }, [contract]);
+  return (
+    <div>
+      <h1>Ethers.js and React Integration</h1>
+      <p>Connected to network: {network}</p>
+      <p>Connected account: {address}</p>
+      {greeting}
+      <p> {isPremium ? "premium" : "Not premium"}</p>
+      {/* Your application code goes here */}
+
+      <div>
+        <input
+          value={newGreeting}
+          onChange={(e) => setNewGreeting(e.target.value)}
+        />
+        <button onClick={handleNewGreeting}>
+          {loading ? "Loading" : "Set Greeting"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default App;
